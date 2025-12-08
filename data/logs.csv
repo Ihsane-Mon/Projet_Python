@@ -1,0 +1,7 @@
+timestamp,username,action,succes
+2025-12-08T18:32:35.441854,bob,creation_compte,False
+2025-12-08T18:32:35.442882,bob,creation_compte,True
+2025-12-08T18:32:35.443413,bob,connexion,True
+2025-12-08T18:40:20.533114,pierre,creation_compte,True
+2025-12-08T18:40:20.859021,marie,creation_compte,True
+2025-12-08T18:40:20.859935,marie,connexion,True
