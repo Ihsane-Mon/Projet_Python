@@ -31,7 +31,8 @@ def charger_utilisateurs():
                     "username": ligne["username"],
                     "password_hash": ligne["password_hash"],
                     "salt": ligne["salt"],
-                    "created_at": ligne["created_at"]
+                    "created_at": ligne["created_at"],
+                    "role": ligne.get("role", "user")  # Par défaut: user
                 })
     except FileNotFoundError:
         pass
@@ -41,7 +42,7 @@ def charger_utilisateurs():
 def sauvegarder_utilisateurs(utilisateurs):
     """Sauvegarde les utilisateurs dans le CSV."""
     with open(FICHIER_UTILISATEURS, mode="w", encoding="utf-8", newline="") as fichier:
-        colonnes = ["id", "username", "password_hash", "salt", "created_at"]
+        colonnes = ["id", "username", "password_hash", "salt", "created_at", "role"]
         ecrivain = csv.DictWriter(fichier, fieldnames=colonnes)
         ecrivain.writeheader()
         ecrivain.writerows(utilisateurs)
@@ -90,7 +91,8 @@ def creer_compte(username, mot_de_passe):
         "username": username,
         "password_hash": password_hash,
         "salt": salt,
-        "created_at": datetime.now().isoformat()
+        "created_at": datetime.now().isoformat(),
+        "role": "user"  # Rôle par défaut
     }
 
     utilisateurs.append(nouvel_utilisateur)
@@ -159,3 +161,33 @@ def enregistrer_log(username, action, succes):
             "action": action,
             "succes": succes
         })
+
+
+def creer_admin_initial():
+    """Crée un compte administrateur initial si aucun admin n'existe."""
+    utilisateurs = charger_utilisateurs()
+    
+    # Vérifier si un admin existe déjà
+    for user in utilisateurs:
+        if user.get("role") == "admin":
+            return None, "Un administrateur existe déjà."
+    
+    # Créer l'admin avec username: admin, password: Admin123
+    salt = generer_salt()
+    password_hash = hacher_mot_de_passe("Admin123", salt)
+    
+    nouvel_id = max([u["id"] for u in utilisateurs], default=0) + 1
+    admin = {
+        "id": nouvel_id,
+        "username": "admin",
+        "password_hash": password_hash,
+        "salt": salt,
+        "created_at": datetime.now().isoformat(),
+        "role": "admin"
+    }
+    
+    utilisateurs.append(admin)
+    sauvegarder_utilisateurs(utilisateurs)
+    enregistrer_log("admin", "creation_admin", True)
+    
+    return admin, "Compte administrateur créé."

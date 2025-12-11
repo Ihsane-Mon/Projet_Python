@@ -692,6 +692,33 @@
         }
 
         /* Filter buttons - Removed, now using stat cards */
+        
+        .filter-btn {
+            padding: 0.75rem 1.5rem;
+            border: 2px solid var(--gray);
+            border-radius: 10px;
+            background: rgba(27, 38, 59, 0.8);
+            color: var(--text);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.9rem;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--primary);
+            background: rgba(0, 217, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .filter-btn.active {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: var(--dark);
+            box-shadow: 0 4px 15px rgba(0, 217, 255, 0.3);
+        }
 
         .loading {
             text-align: center;
@@ -1052,12 +1079,15 @@
             const [token, setToken] = useState(localStorage.getItem('token'));
             const [currentPage, setCurrentPage] = useState('products');
             const [cart, setCart] = useState([]);
+            const [userRole, setUserRole] = useState(localStorage.getItem('userRole'));
 
             useEffect(() => {
                 if (token) {
                     const storedUser = localStorage.getItem('username');
+                    const storedRole = localStorage.getItem('userRole');
                     if (storedUser) {
                         setUser(storedUser);
+                        setUserRole(storedRole || 'user');
                     }
                 }
                 
@@ -1073,18 +1103,22 @@
                 localStorage.setItem('cart', JSON.stringify(cart));
             }, [cart]);
 
-            const handleLogin = (username, authToken) => {
+            const handleLogin = (username, authToken, role) => {
                 setUser(username);
                 setToken(authToken);
+                setUserRole(role);
                 localStorage.setItem('token', authToken);
                 localStorage.setItem('username', username);
+                localStorage.setItem('userRole', role);
             };
 
             const handleLogout = () => {
                 setUser(null);
                 setToken(null);
+                setUserRole(null);
                 localStorage.removeItem('token');
                 localStorage.removeItem('username');
+                localStorage.removeItem('userRole');
                 setCurrentPage('products');
                 setCart([]);
                 localStorage.removeItem('cart');
@@ -1154,11 +1188,21 @@
                                 >
                                     Mes Commandes
                                 </button>
+                                {userRole === 'admin' && (
+                                    <button 
+                                        className={`nav-link ${currentPage === 'admin' ? 'active' : ''}`}
+                                        onClick={() => setCurrentPage('admin')}
+                                        style={{background: 'linear-gradient(135deg, var(--secondary), var(--danger))'}}
+                                    >
+                                        👑 Admin
+                                    </button>
+                                )}
                                 <div className="user-info">
                                     <div className="user-avatar">
                                         {user.charAt(0).toUpperCase()}
                                     </div>
                                     <span>{user}</span>
+                                    {userRole === 'admin' && <span style={{fontSize: '0.8rem', color: 'var(--secondary)'}}>ADMIN</span>}
                                     <button className="btn btn-secondary" onClick={handleLogout}>
                                         Déconnexion
                                     </button>
@@ -1191,6 +1235,7 @@
                                 />
                             )}
                             {currentPage === 'orders' && <OrdersPage token={token} />}
+                            {currentPage === 'admin' && userRole === 'admin' && <AdminPage token={token} />}
                         </main>
                     )}
                 </div>
@@ -1227,7 +1272,7 @@
 
                     if (response.ok) {
                         if (isLogin) {
-                            onLogin(data.username, data.token);
+                            onLogin(data.username, data.token, data.role || 'user');
                         } else {
                             setSuccess('Compte créé avec succès ! Vous pouvez maintenant vous connecter.');
                             setIsLogin(true);
@@ -1777,6 +1822,443 @@
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                    )}
+                </>
+            );
+        }
+
+        // Composant de la page d'administration
+        function AdminPage({ token }) {
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [stats, setStats] = useState(null);
+            const [products, setProducts] = useState([]);
+            const [orders, setOrders] = useState([]);
+            const [users, setUsers] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState('');
+            const [success, setSuccess] = useState('');
+            const [editingProduct, setEditingProduct] = useState(null);
+            const [newProduct, setNewProduct] = useState({ nom: '', description: '', prix: '', quantite: '' });
+
+            useEffect(() => {
+                fetchAdminData();
+            }, []);
+
+            const fetchAdminData = async () => {
+                try {
+                    const [statsRes, productsRes, ordersRes, usersRes] = await Promise.all([
+                        fetch(`${API_URL}/admin/stats`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                        fetch(`${API_URL}/products?limite=100`),
+                        fetch(`${API_URL}/admin/orders`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                        fetch(`${API_URL}/admin/users`, { headers: { 'Authorization': `Bearer ${token}` } })
+                    ]);
+
+                    const statsData = await statsRes.json();
+                    const productsData = await productsRes.json();
+                    const ordersData = await ordersRes.json();
+                    const usersData = await usersRes.json();
+
+                    setStats(statsData);
+                    setProducts(productsData.produits || []);
+                    setOrders(ordersData.commandes || []);
+                    setUsers(usersData.utilisateurs || []);
+                } catch (err) {
+                    setError('Erreur lors du chargement des données');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleValidateOrder = async (orderId) => {
+                try {
+                    const response = await fetch(`${API_URL}/admin/orders/${orderId}/validate`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+
+                    if (response.ok) {
+                        setSuccess('Commande validée !');
+                        setTimeout(() => setSuccess(''), 3000);
+                        fetchAdminData();
+                    }
+                } catch (err) {
+                    setError('Erreur lors de la validation');
+                    setTimeout(() => setError(''), 3000);
+                }
+            };
+
+            const handleCancelOrder = async (orderId) => {
+                try {
+                    const response = await fetch(`${API_URL}/admin/orders/${orderId}/cancel`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+
+                    if (response.ok) {
+                        setSuccess('Commande annulée !');
+                        setTimeout(() => setSuccess(''), 3000);
+                        fetchAdminData();
+                    }
+                } catch (err) {
+                    setError('Erreur lors de l\'annulation');
+                    setTimeout(() => setError(''), 3000);
+                }
+            };
+
+            const handleCreateProduct = async (e) => {
+                e.preventDefault();
+                try {
+                    const response = await fetch(`${API_URL}/admin/products`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            nom: newProduct.nom,
+                            description: newProduct.description,
+                            prix: parseFloat(newProduct.prix),
+                            quantite: parseInt(newProduct.quantite)
+                        })
+                    });
+
+                    if (response.ok) {
+                        setSuccess('Produit créé !');
+                        setNewProduct({ nom: '', description: '', prix: '', quantite: '' });
+                        setTimeout(() => setSuccess(''), 3000);
+                        fetchAdminData();
+                    }
+                } catch (err) {
+                    setError('Erreur lors de la création');
+                    setTimeout(() => setError(''), 3000);
+                }
+            };
+
+            const handleUpdateProduct = async (productId) => {
+                try {
+                    const response = await fetch(`${API_URL}/admin/products/${productId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(editingProduct)
+                    });
+
+                    if (response.ok) {
+                        setSuccess('Produit modifié !');
+                        setEditingProduct(null);
+                        setTimeout(() => setSuccess(''), 3000);
+                        fetchAdminData();
+                    }
+                } catch (err) {
+                    setError('Erreur lors de la modification');
+                    setTimeout(() => setError(''), 3000);
+                }
+            };
+
+            const handleDeleteProduct = async (productId) => {
+                if (!confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) return;
+
+                try {
+                    const response = await fetch(`${API_URL}/admin/products/${productId}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+
+                    if (response.ok) {
+                        setSuccess('Produit supprimé !');
+                        setTimeout(() => setSuccess(''), 3000);
+                        fetchAdminData();
+                    }
+                } catch (err) {
+                    setError('Erreur lors de la suppression');
+                    setTimeout(() => setError(''), 3000);
+                }
+            };
+
+            if (loading) {
+                return <div className="loading">Chargement du panneau d'administration</div>;
+            }
+
+            return (
+                <>
+                    <div className="page-header">
+                        <h1 className="page-title">👑 Administration</h1>
+                        <p className="page-subtitle">Panneau de contrôle administrateur</p>
+                    </div>
+
+                    {success && <div className="success-message">{success}</div>}
+                    {error && <div className="error-message">{error}</div>}
+
+                    <div className="filter-buttons" style={{marginBottom: '2rem'}}>
+                        <button 
+                            className={`filter-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('dashboard')}
+                        >
+                            📊 Dashboard
+                        </button>
+                        <button 
+                            className={`filter-btn ${activeTab === 'products' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('products')}
+                        >
+                            📦 Produits ({products.length})
+                        </button>
+                        <button 
+                            className={`filter-btn ${activeTab === 'orders' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('orders')}
+                        >
+                            🛒 Commandes ({orders.length})
+                        </button>
+                        <button 
+                            className={`filter-btn ${activeTab === 'users' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('users')}
+                        >
+                            👥 Utilisateurs ({users.length})
+                        </button>
+                    </div>
+
+                    {activeTab === 'dashboard' && stats && (
+                        <div>
+                            <h2 style={{fontSize: '2rem', marginBottom: '2rem', color: 'var(--text)'}}>📊 Statistiques Globales</h2>
+                            
+                            <div className="stats-grid">
+                                <div className="stat-card">
+                                    <span className="stat-icon">📦</span>
+                                    <div className="stat-value">{stats.produits.total}</div>
+                                    <div className="stat-label">Produits</div>
+                                </div>
+                                <div className="stat-card">
+                                    <span className="stat-icon">📊</span>
+                                    <div className="stat-value">{stats.produits.stock_total}</div>
+                                    <div className="stat-label">Stock Total</div>
+                                </div>
+                                <div className="stat-card">
+                                    <span className="stat-icon">💰</span>
+                                    <div className="stat-value">{stats.produits.valeur_stock.toFixed(0)}€</div>
+                                    <div className="stat-label">Valeur Stock</div>
+                                </div>
+                                <div className="stat-card">
+                                    <span className="stat-icon">🛒</span>
+                                    <div className="stat-value">{stats.commandes.total}</div>
+                                    <div className="stat-label">Commandes</div>
+                                </div>
+                                <div className="stat-card">
+                                    <span className="stat-icon">⏳</span>
+                                    <div className="stat-value">{stats.commandes.en_attente}</div>
+                                    <div className="stat-label">En Attente</div>
+                                </div>
+                                <div className="stat-card">
+                                    <span className="stat-icon">✓</span>
+                                    <div className="stat-value">{stats.commandes.validees}</div>
+                                    <div className="stat-label">Validées</div>
+                                </div>
+                                <div className="stat-card">
+                                    <span className="stat-icon">💵</span>
+                                    <div className="stat-value">{stats.commandes.ca_total.toFixed(0)}€</div>
+                                    <div className="stat-label">CA Total</div>
+                                </div>
+                                <div className="stat-card">
+                                    <span className="stat-icon">👥</span>
+                                    <div className="stat-value">{stats.utilisateurs.total}</div>
+                                    <div className="stat-label">Utilisateurs</div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'products' && (
+                        <div>
+                            <h2 style={{fontSize: '2rem', marginBottom: '2rem', color: 'var(--text)'}}>➕ Créer un Produit</h2>
+                            <form onSubmit={handleCreateProduct} style={{marginBottom: '3rem', background: 'rgba(27, 38, 59, 0.8)', padding: '2rem', borderRadius: '20px', border: '2px solid var(--gray)'}}>
+                                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem'}}>
+                                    <input 
+                                        className="form-input" 
+                                        placeholder="Nom du produit" 
+                                        value={newProduct.nom}
+                                        onChange={(e) => setNewProduct({...newProduct, nom: e.target.value})}
+                                        required
+                                    />
+                                    <input 
+                                        className="form-input" 
+                                        placeholder="Prix (€)" 
+                                        type="number" 
+                                        step="0.01"
+                                        value={newProduct.prix}
+                                        onChange={(e) => setNewProduct({...newProduct, prix: e.target.value})}
+                                        required
+                                    />
+                                </div>
+                                <input 
+                                    className="form-input" 
+                                    placeholder="Description" 
+                                    value={newProduct.description}
+                                    onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
+                                    required
+                                    style={{marginBottom: '1rem'}}
+                                />
+                                <input 
+                                    className="form-input" 
+                                    placeholder="Quantité" 
+                                    type="number"
+                                    value={newProduct.quantite}
+                                    onChange={(e) => setNewProduct({...newProduct, quantite: e.target.value})}
+                                    required
+                                    style={{marginBottom: '1rem'}}
+                                />
+                                <button type="submit" className="btn btn-primary" style={{width: '100%'}}>Créer le Produit</button>
+                            </form>
+
+                            <h2 style={{fontSize: '2rem', marginBottom: '2rem', color: 'var(--text)'}}>📦 Liste des Produits</h2>
+                            <div className="products-grid">
+                                {products.map((product) => (
+                                    <div key={product.id} className="product-card">
+                                        {editingProduct && editingProduct.id === product.id ? (
+                                            <>
+                                                <input 
+                                                    className="form-input" 
+                                                    value={editingProduct.nom}
+                                                    onChange={(e) => setEditingProduct({...editingProduct, nom: e.target.value})}
+                                                    style={{marginBottom: '0.5rem', fontSize: '1rem'}}
+                                                />
+                                                <input 
+                                                    className="form-input" 
+                                                    value={editingProduct.description}
+                                                    onChange={(e) => setEditingProduct({...editingProduct, description: e.target.value})}
+                                                    style={{marginBottom: '0.5rem', fontSize: '0.9rem'}}
+                                                />
+                                                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1rem'}}>
+                                                    <input 
+                                                        className="form-input" 
+                                                        type="number" 
+                                                        step="0.01"
+                                                        value={editingProduct.prix}
+                                                        onChange={(e) => setEditingProduct({...editingProduct, prix: parseFloat(e.target.value)})}
+                                                        style={{fontSize: '0.9rem'}}
+                                                    />
+                                                    <input 
+                                                        className="form-input" 
+                                                        type="number"
+                                                        value={editingProduct.quantite}
+                                                        onChange={(e) => setEditingProduct({...editingProduct, quantite: parseInt(e.target.value)})}
+                                                        style={{fontSize: '0.9rem'}}
+                                                    />
+                                                </div>
+                                                <div style={{display: 'flex', gap: '0.5rem'}}>
+                                                    <button 
+                                                        className="btn btn-primary" 
+                                                        style={{flex: 1, padding: '0.5rem'}}
+                                                        onClick={() => handleUpdateProduct(product.id)}
+                                                    >
+                                                        Sauvegarder
+                                                    </button>
+                                                    <button 
+                                                        className="btn btn-secondary" 
+                                                        style={{flex: 1, padding: '0.5rem'}}
+                                                        onClick={() => setEditingProduct(null)}
+                                                    >
+                                                        Annuler
+                                                    </button>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="product-header">
+                                                    <span className="product-id">#{product.id}</span>
+                                                </div>
+                                                <h3 className="product-name">{product.nom}</h3>
+                                                <p className="product-description">{product.description}</p>
+                                                <div className="product-info">
+                                                    <div className="product-price">{product.prix.toFixed(2)}€</div>
+                                                    <div className="product-stock stock-high">{product.quantite} en stock</div>
+                                                </div>
+                                                <div style={{display: 'flex', gap: '0.5rem', marginTop: '1rem'}}>
+                                                    <button 
+                                                        className="btn btn-primary" 
+                                                        style={{flex: 1, padding: '0.5rem', fontSize: '0.9rem'}}
+                                                        onClick={() => setEditingProduct(product)}
+                                                    >
+                                                        Modifier
+                                                    </button>
+                                                    <button 
+                                                        className="btn btn-secondary" 
+                                                        style={{flex: 1, padding: '0.5rem', fontSize: '0.9rem'}}
+                                                        onClick={() => handleDeleteProduct(product.id)}
+                                                    >
+                                                        Supprimer
+                                                    </button>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'orders' && (
+                        <div>
+                            <h2 style={{fontSize: '2rem', marginBottom: '2rem', color: 'var(--text)'}}>🛒 Toutes les Commandes</h2>
+                            <div className="orders-grid">
+                                {orders.map((order) => {
+                                    const product = products.find(p => p.id === order.produit_id);
+                                    return (
+                                        <div key={order.id} className="order-card" style={{gridTemplateColumns: 'auto 1fr auto auto'}}>
+                                            <div className="order-id-badge">#{order.id}</div>
+                                            <div className="order-details">
+                                                <div className="order-product-name">{product ? product.nom : `Produit #${order.produit_id}`}</div>
+                                                <div className="order-meta">
+                                                    Client: {order.username} • Qté: {order.quantite} • Total: {order.total.toFixed(2)}€ • {new Date(order.date).toLocaleDateString('fr-FR')}
+                                                </div>
+                                            </div>
+                                            <div className={`order-status status-${order.statut.replace('_', '-')}`}>
+                                                {order.statut === 'en_attente' ? 'En attente' : order.statut === 'validee' ? 'Validée' : 'Annulée'}
+                                            </div>
+                                            {order.statut === 'en_attente' && (
+                                                <div style={{display: 'flex', gap: '0.5rem', flexDirection: 'column'}}>
+                                                    <button 
+                                                        className="btn btn-primary" 
+                                                        style={{padding: '0.4rem 0.8rem', fontSize: '0.85rem', whiteSpace: 'nowrap'}}
+                                                        onClick={() => handleValidateOrder(order.id)}
+                                                    >
+                                                        ✓ Valider
+                                                    </button>
+                                                    <button 
+                                                        className="btn btn-secondary" 
+                                                        style={{padding: '0.4rem 0.8rem', fontSize: '0.85rem', whiteSpace: 'nowrap'}}
+                                                        onClick={() => handleCancelOrder(order.id)}
+                                                    >
+                                                        ✗ Annuler
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'users' && (
+                        <div>
+                            <h2 style={{fontSize: '2rem', marginBottom: '2rem', color: 'var(--text)'}}>👥 Liste des Utilisateurs</h2>
+                            <div className="orders-grid">
+                                {users.map((user) => (
+                                    <div key={user.id} className="order-card" style={{gridTemplateColumns: 'auto 1fr auto'}}>
+                                        <div className="order-id-badge">#{user.id}</div>
+                                        <div className="order-details">
+                                            <div className="order-product-name">{user.username}</div>
+                                            <div className="order-meta">
+                                                Inscrit le: {new Date(user.created_at).toLocaleDateString('fr-FR')}
+                                            </div>
+                                        </div>
+                                        <div className={`order-status ${user.role === 'admin' ? 'status-validee' : 'status-en-attente'}`}>
+                                            {user.role === 'admin' ? '👑 Admin' : '👤 User'}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
                 </>
