@@ -200,8 +200,8 @@ def delete_produit(id):
 @app.route("/api/orders", methods=["GET"])
 @token_requis
 def get_commandes():
-    """Liste toutes les commandes."""
-    commandes = charger_commandes()
+    """Liste toutes les commandes de l'utilisateur connecté."""
+    commandes = charger_commandes(username=request.utilisateur)
     return jsonify({"commandes": commandes, "total": len(commandes)})
 
 
@@ -215,7 +215,11 @@ def post_commande():
         return jsonify({"erreur": "produit_id et quantite requis"}), 400
     
     try:
-        commande, message = creer_commande(int(data["produit_id"]), int(data["quantite"]))
+        commande, message = creer_commande(
+            int(data["produit_id"]), 
+            int(data["quantite"]),
+            request.utilisateur
+        )
         
         if commande:
             return jsonify({"commande": commande, "message": message}), 201
@@ -265,4 +269,3 @@ def get_stats():
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
-

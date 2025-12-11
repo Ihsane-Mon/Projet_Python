@@ -1,0 +1,102 @@
+
+==================================================
+modules/produits.py
+==================================================
+************* Module modules.produits
+modules\produits.py:82:0: C0304: Final newline missing (missing-final-newline)
+modules\produits.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+
+------------------------------------------------------------------
+Your code has been rated at 9.59/10 (previous run: 9.59/10, +0.00)
+
+
+==================================================
+modules/auth.py
+==================================================
+************* Module modules.auth
+modules\auth.py:108:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\auth.py:112:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\auth.py:115:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\auth.py:120:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\auth.py:161:0: C0304: Final newline missing (missing-final-newline)
+modules\auth.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+modules\auth.py:75:4: R1705: Unnecessary "elif" after "return", remove the leading "el" from "elif" (no-else-return)
+modules\auth.py:87:16: R1728: Consider using a generator instead 'max((u['id'] for u in utilisateurs), default=0)' (consider-using-generator)
+
+------------------------------------------------------------------
+Your code has been rated at 9.09/10 (previous run: 9.09/10, +0.00)
+
+
+==================================================
+modules/password_check.py
+==================================================
+************* Module modules.password_check
+modules\password_check.py:36:0: C0304: Final newline missing (missing-final-newline)
+modules\password_check.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+modules\password_check.py:21:14: W1309: Using an f-string that does not have any interpolated variables (f-string-without-interpolation)
+modules\password_check.py:16:4: W0612: Unused variable 'prefixe' (unused-variable)
+
+------------------------------------------------------------------
+Your code has been rated at 7.78/10 (previous run: 7.78/10, +0.00)
+
+
+==================================================
+modules/commandes.py
+==================================================
+************* Module modules.commandes
+modules\commandes.py:50:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\commandes.py:53:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\commandes.py:56:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\commandes.py:59:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\commandes.py:71:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\commandes.py:75:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\commandes.py:79:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\commandes.py:86:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\commandes.py:92:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\commandes.py:95:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\commandes.py:98:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\commandes.py:105:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\commandes.py:109:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\commandes.py:116:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\commandes.py:124:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\commandes.py:125:0: C0304: Final newline missing (missing-final-newline)
+modules\commandes.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+modules\commandes.py:2:0: W0611: Unused import os (unused-import)
+
+------------------------------------------------------------------
+Your code has been rated at 7.39/10 (previous run: 7.39/10, +0.00)
+
+
+==================================================
+modules/stats.py
+==================================================
+************* Module modules.stats
+modules\stats.py:13:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\stats.py:16:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\stats.py:24:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\stats.py:32:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\stats.py:36:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\stats.py:41:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\stats.py:53:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\stats.py:56:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\stats.py:63:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\stats.py:67:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\stats.py:70:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\stats.py:83:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\stats.py:87:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\stats.py:90:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\stats.py:103:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\stats.py:107:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\stats.py:113:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\stats.py:117:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\stats.py:132:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\stats.py:142:0: C0303: Trailing whitespace (trailing-whitespace)
+modules\stats.py:145:0: C0304: Final newline missing (missing-final-newline)
+modules\stats.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+modules\stats.py:3:0: C0411: standard import "collections.defaultdict" should be placed before third party imports "matplotlib.pyplot", "seaborn" (wrong-import-order)
+modules\stats.py:4:0: C0411: standard import "datetime.datetime" should be placed before third party imports "matplotlib.pyplot", "seaborn" (wrong-import-order)
+modules\stats.py:4:0: W0611: Unused datetime imported from datetime (unused-import)
+
+------------------------------------------------------------------
+Your code has been rated at 7.22/10 (previous run: 7.22/10, +0.00)
+

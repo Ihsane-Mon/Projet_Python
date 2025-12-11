@@ -6,22 +6,26 @@ from modules.produits import charger_produits, trouver_produit, sauvegarder_prod
 FICHIER_COMMANDES = "data/commandes.csv"
 
 
-def charger_commandes():
-    """Charge toutes les commandes depuis le CSV."""
+def charger_commandes(username=None):
+    """Charge toutes les commandes depuis le CSV. Filtre par username si fourni."""
     commandes = []
     try:
         with open(FICHIER_COMMANDES, mode="r", encoding="utf-8") as fichier:
             lecteur = csv.DictReader(fichier)
             for ligne in lecteur:
-                commandes.append({
+                commande = {
                     "id": int(ligne["id"]),
                     "produit_id": int(ligne["produit_id"]),
                     "quantite": int(ligne["quantite"]),
                     "prix_unitaire": float(ligne["prix_unitaire"]),
                     "total": float(ligne["total"]),
                     "date": ligne["date"],
-                    "statut": ligne["statut"]
-                })
+                    "statut": ligne["statut"],
+                    "username": ligne.get("username", "")
+                }
+                # Filtrer par username si spécifié
+                if username is None or commande["username"] == username:
+                    commandes.append(commande)
     except FileNotFoundError:
         pass
     return commandes
@@ -30,7 +34,7 @@ def charger_commandes():
 def sauvegarder_commandes(commandes):
     """Sauvegarde les commandes dans le CSV."""
     with open(FICHIER_COMMANDES, mode="w", encoding="utf-8", newline="") as fichier:
-        colonnes = ["id", "produit_id", "quantite", "prix_unitaire", "total", "date", "statut"]
+        colonnes = ["id", "produit_id", "quantite", "prix_unitaire", "total", "date", "statut", "username"]
         ecrivain = csv.DictWriter(fichier, fieldnames=colonnes)
         ecrivain.writeheader()
         ecrivain.writerows(commandes)
@@ -43,7 +47,7 @@ def generer_id_commande(commandes):
     return max(c["id"] for c in commandes) + 1
 
 
-def creer_commande(produit_id, quantite):
+def creer_commande(produit_id, quantite, username):
     """Crée une nouvelle commande avec vérification du stock."""
     produits = charger_produits()
     produit = trouver_produit(produits, produit_id)
@@ -66,7 +70,8 @@ def creer_commande(produit_id, quantite):
         "prix_unitaire": produit["prix"],
         "total": total,
         "date": datetime.now().isoformat(),
-        "statut": "en_attente"
+        "statut": "en_attente",
+        "username": username
     }
     
     # Mettre à jour le stock
