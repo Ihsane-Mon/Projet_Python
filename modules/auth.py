@@ -31,8 +31,7 @@ def charger_utilisateurs():
                     "username": ligne["username"],
                     "password_hash": ligne["password_hash"],
                     "salt": ligne["salt"],
-                    "created_at": ligne["created_at"],
-                    "role": ligne.get("role", "user")  # Par défaut: user
+                    "created_at": ligne["created_at"]
                 })
     except FileNotFoundError:
         pass
@@ -60,39 +59,41 @@ def creer_compte(username, mot_de_passe):
     """Crée un nouveau compte utilisateur."""
     utilisateurs = charger_utilisateurs()
 
-#Vérifier si l'utilisateur existe déjà
+    # Vérifier si l'utilisateur existe déjà
     if trouver_utilisateur(utilisateurs, username):
         enregistrer_log(username, "creation_compte", False)
         return None, "Ce nom d'utilisateur existe déjà."
 
-#Valider le mot de passe
+    # Valider le mot de passe
     valide, erreurs = valider_mot_de_passe(mot_de_passe)
     if not valide:
         enregistrer_log(username, "creation_compte", False)
         return None, "Mot de passe invalide : " + " ".join(erreurs)
 
-#Vérifier si le mot de passe est compromis
+    # Vérifier si le mot de passe est compromis
     compromis, count = verifier_mot_de_passe_compromis(mot_de_passe)
     if compromis:
         enregistrer_log(username, "creation_compte", False)
-        return None, f"Ce mot de passe a été compromis {count} fois. Choisissez-en un autre."
+        return (
+            None,
+            f"Ce mot de passe a été compromis {count} fois. Choisissez-en un autre.",
+        )
     elif compromis is None:
         # Erreur API - on prévient mais on continue
         print("Attention : impossible de vérifier si le mot de passe est compromis.")
 
-#Générer salt et hacher le mot de passe
+    # Générer salt et hacher le mot de passe
     salt = generer_salt()
     password_hash = hacher_mot_de_passe(mot_de_passe, salt)
 
-#Créer le nouvel utilisateur
+    # Créer le nouvel utilisateur
     nouvel_id = max([u["id"] for u in utilisateurs], default=0) + 1
     nouvel_utilisateur = {
         "id": nouvel_id,
         "username": username,
         "password_hash": password_hash,
         "salt": salt,
-        "created_at": datetime.now().isoformat(),
-        "role": "user"  # Rôle par défaut
+        "created_at": datetime.now().isoformat()
     }
 
     utilisateurs.append(nouvel_utilisateur)
@@ -102,26 +103,26 @@ def creer_compte(username, mot_de_passe):
     return nouvel_utilisateur, "Compte créé avec succès."
 
 
-
 def verifier_connexion(username, mot_de_passe):
     """Vérifie les identifiants de connexion."""
     utilisateurs = charger_utilisateurs()
     utilisateur = trouver_utilisateur(utilisateurs, username)
-    
+
     if not utilisateur:
         enregistrer_log(username, "connexion", False)
         return None, "Utilisateur introuvable."
-    
+
     # Hacher le mot de passe saisi avec le salt stocké
     hash_saisi = hacher_mot_de_passe(mot_de_passe, utilisateur["salt"])
-    
+
     # Comparaison sécurisée (temps constant)
     if secrets.compare_digest(hash_saisi, utilisateur["password_hash"]):
         enregistrer_log(username, "connexion", True)
         return utilisateur, "Connexion réussie."
-    
+
     enregistrer_log(username, "connexion", False)
     return None, "Mot de passe incorrect."
+
 
 FICHIER_LOGS = "data/logs.csv"
 
@@ -144,6 +145,7 @@ def valider_mot_de_passe(mot_de_passe):
 
     return len(erreurs) == 0, erreurs
 
+
 def enregistrer_log(username, action, succes):
     """Enregistre une action dans les logs."""
     fichier_existe = os.path.exists(FICHIER_LOGS)
@@ -161,33 +163,3 @@ def enregistrer_log(username, action, succes):
             "action": action,
             "succes": succes
         })
-
-
-def creer_admin_initial():
-    """Crée un compte administrateur initial si aucun admin n'existe."""
-    utilisateurs = charger_utilisateurs()
-    
-    # Vérifier si un admin existe déjà
-    for user in utilisateurs:
-        if user.get("role") == "admin":
-            return None, "Un administrateur existe déjà."
-    
-    # Créer l'admin avec username: admin, password: Admin123
-    salt = generer_salt()
-    password_hash = hacher_mot_de_passe("Admin123", salt)
-    
-    nouvel_id = max([u["id"] for u in utilisateurs], default=0) + 1
-    admin = {
-        "id": nouvel_id,
-        "username": "admin",
-        "password_hash": password_hash,
-        "salt": salt,
-        "created_at": datetime.now().isoformat(),
-        "role": "admin"
-    }
-    
-    utilisateurs.append(admin)
-    sauvegarder_utilisateurs(utilisateurs)
-    enregistrer_log("admin", "creation_admin", True)
-    
-    return admin, "Compte administrateur créé."

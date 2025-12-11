@@ -12,11 +12,11 @@ def verifier_mot_de_passe_compromis(mot_de_passe):
     # Étape 1 : Hacher en SHA-1 (requis par l'API)
     sha1_hash = hashlib.sha1(mot_de_passe.encode()).hexdigest().upper()
 
-#Étape 2 : Séparer le hash (5 premiers + reste)
+    # Étape 2 : Séparer le hash (5 premiers + reste)
     prefixe = sha1_hash[:5]
     suffixe = sha1_hash[5:]
 
-#Étape 3 : Appeler l'API avec le préfixe seulement
+    # Étape 3 : Appeler l'API avec le préfixe seulement
     try:
         url = f"https://api.pwnedpasswords.com/range/%7Bprefixe%7D"
         response = requests.get(url, timeout=5)
@@ -24,7 +24,7 @@ def verifier_mot_de_passe_compromis(mot_de_passe):
         if response.status_code != 200:
             return None, "Erreur lors de la vérification."
 
-#Étape 4 : Chercher le suffixe dans les résultats
+        # Étape 4 : Chercher le suffixe dans les résultats
         for ligne in response.text.splitlines():
             hash_suffixe, count = ligne.split(":")
             if hash_suffixe == suffixe:

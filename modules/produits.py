@@ -15,12 +15,13 @@ def charger_produits():
                     "nom": ligne["nom"],
                     "description": ligne["description"],
                     "prix": float(ligne["prix"]),
-                    "quantite": int(ligne["quantite"])
+                    "quantite": int(ligne["quantite"]),
                 }
                 produits.append(produit)
     except FileNotFoundError:
         print("Fichier produits.csv introuvable.")
     return produits
+
 
 def sauvegarder_produits(produits):
     """Sauvegarde la liste des produits dans le fichier CSV."""
@@ -45,7 +46,7 @@ def ajouter_produit(produits, nom, description, prix, quantite):
         "nom": nom,
         "description": description,
         "prix": float(prix),
-        "quantite": int(quantite)
+        "quantite": int(quantite),
     }
     produits.append(nouveau)
     sauvegarder_produits(produits)
