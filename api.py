@@ -9,10 +9,15 @@ from modules.produits import (
     ajouter_produit,
     modifier_produit,
     supprimer_produit,
-    trouver_produit
+    trouver_produit,
 )
 from modules.auth import verifier_connexion, creer_compte
-from modules.commandes import charger_commandes, creer_commande, valider_commande, annuler_commande
+from modules.commandes import (
+    charger_commandes,
+    creer_commande,
+    valider_commande,
+    annuler_commande,
+)
 from modules.stats import calculer_statistiques, top_produits
 
 app = Flask(__name__)
@@ -24,55 +29,61 @@ SECRET_KEY = "votre_cle_secrete_tres_longue_et_complexe"
 
 # ==================== MIDDLEWARE AUTH ====================
 
+
 def token_requis(f):
     """Décorateur pour protéger les routes."""
+
     @wraps(f)
     def decorated(*args, **kwargs):
         token = request.headers.get("Authorization")
-        
+
         if not token:
             return jsonify({"erreur": "Token manquant"}), 401
-        
+
         try:
             # Enlever "Bearer " si présent
             if token.startswith("Bearer "):
                 token = token[7:]
-            
+
             data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
             request.utilisateur = data["username"]
         except jwt.ExpiredSignatureError:
             return jsonify({"erreur": "Token expiré"}), 401
         except jwt.InvalidTokenError:
             return jsonify({"erreur": "Token invalide"}), 401
-        
+
         return f(*args, **kwargs)
+
     return decorated
 
 
 # ==================== AUTH ENDPOINTS ====================
 
+
 @app.route("/api/auth/login", methods=["POST"])
 def login():
     """Authentification et génération du token JWT."""
     data = request.get_json()
-    
+
     if not data or "username" not in data or "password" not in data:
         return jsonify({"erreur": "Username et password requis"}), 400
-    
+
     user, message = verifier_connexion(data["username"], data["password"])
-    
+
     if user:
-        token = jwt.encode({
-            "username": user["username"],
-            "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)
-        }, SECRET_KEY, algorithm="HS256")
-        
-        return jsonify({
-            "message": message,
-            "token": token,
-            "username": user["username"]
-        })
-    
+        token = jwt.encode(
+            {
+                "username": user["username"],
+                "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24),
+            },
+            SECRET_KEY,
+            algorithm="HS256",
+        )
+
+        return jsonify(
+            {"message": message, "token": token, "username": user["username"]}
+        )
+
     return jsonify({"erreur": message}), 401
 
 
@@ -80,38 +91,41 @@ def login():
 def register():
     """Création de compte."""
     data = request.get_json()
-    
+
     if not data or "username" not in data or "password" not in data:
         return jsonify({"erreur": "Username et password requis"}), 400
-    
+
     user, message = creer_compte(data["username"], data["password"])
-    
+
     if user:
         return jsonify({"message": message}), 201
-    
+
     return jsonify({"erreur": message}), 400
 
 
 # ==================== PRODUITS ENDPOINTS ====================
 
+
 @app.route("/api/products", methods=["GET"])
 def get_produits():
     """Liste tous les produits avec pagination."""
     produits = charger_produits()
-    
+
     # Pagination
     page = request.args.get("page", 1, type=int)
     limite = request.args.get("limite", 10, type=int)
-    
+
     debut = (page - 1) * limite
     fin = debut + limite
-    
-    return jsonify({
-        "produits": produits[debut:fin],
-        "total": len(produits),
-        "page": page,
-        "pages": (len(produits) + limite - 1) // limite
-    })
+
+    return jsonify(
+        {
+            "produits": produits[debut:fin],
+            "total": len(produits),
+            "page": page,
+            "pages": (len(produits) + limite - 1) // limite,
+        }
+    )
 
 
 @app.route("/api/products/<int:id>", methods=["GET"])
@@ -119,10 +133,10 @@ def get_produit(id):
     """Détails d'un produit."""
     produits = charger_produits()
     produit = trouver_produit(produits, id)
-    
+
     if produit:
         return jsonify(produit)
-    
+
     return jsonify({"erreur": "Produit introuvable"}), 404
 
 
@@ -131,11 +145,14 @@ def get_produit(id):
 def post_produit():
     """Créer un nouveau produit (auth requise)."""
     data = request.get_json()
-    
+
     champs_requis = ["nom", "description", "prix", "quantite"]
     if not data or not all(champ in data for champ in champs_requis):
-        return jsonify({"erreur": "Champs requis: nom, description, prix, quantite"}), 400
-    
+        return (
+            jsonify({"erreur": "Champs requis: nom, description, prix, quantite"}),
+            400,
+        )
+
     try:
         produits = charger_produits()
         nouveau = ajouter_produit(
@@ -143,7 +160,7 @@ def post_produit():
             data["nom"],
             data["description"],
             float(data["prix"]),
-            int(data["quantite"])
+            int(data["quantite"]),
         )
         return jsonify(nouveau), 201
     except ValueError:
@@ -155,16 +172,16 @@ def post_produit():
 def put_produit(id):
     """Modifier un produit (auth requise)."""
     data = request.get_json()
-    
+
     if not data:
         return jsonify({"erreur": "Données requises"}), 400
-    
+
     produits = charger_produits()
     produit = trouver_produit(produits, id)
-    
+
     if not produit:
         return jsonify({"erreur": "Produit introuvable"}), 404
-    
+
     try:
         modifications = {}
         if "nom" in data:
@@ -175,7 +192,7 @@ def put_produit(id):
             modifications["prix"] = float(data["prix"])
         if "quantite" in data:
             modifications["quantite"] = int(data["quantite"])
-        
+
         modifier_produit(produits, id, **modifications)
         return jsonify(trouver_produit(charger_produits(), id))
     except ValueError:
@@ -187,15 +204,16 @@ def put_produit(id):
 def delete_produit(id):
     """Supprimer un produit (auth requise)."""
     produits = charger_produits()
-    
+
     if not trouver_produit(produits, id):
         return jsonify({"erreur": "Produit introuvable"}), 404
-    
+
     supprimer_produit(produits, id)
     return jsonify({"message": "Produit supprimé"}), 200
 
 
 # ==================== COMMANDES ENDPOINTS ====================
+
 
 @app.route("/api/orders", methods=["GET"])
 @token_requis
@@ -210,13 +228,15 @@ def get_commandes():
 def post_commande():
     """Créer une commande."""
     data = request.get_json()
-    
+
     if not data or "produit_id" not in data or "quantite" not in data:
         return jsonify({"erreur": "produit_id et quantite requis"}), 400
-    
+
     try:
-        commande, message = creer_commande(int(data["produit_id"]), int(data["quantite"]))
-        
+        commande, message = creer_commande(
+            int(data["produit_id"]), int(data["quantite"])
+        )
+
         if commande:
             return jsonify({"commande": commande, "message": message}), 201
         return jsonify({"erreur": message}), 400
@@ -229,7 +249,7 @@ def post_commande():
 def post_valider_commande(id):
     """Valider une commande."""
     succes, message = valider_commande(id)
-    
+
     if succes:
         return jsonify({"message": message})
     return jsonify({"erreur": message}), 400
@@ -240,7 +260,7 @@ def post_valider_commande(id):
 def post_annuler_commande(id):
     """Annuler une commande."""
     succes, message = annuler_commande(id)
-    
+
     if succes:
         return jsonify({"message": message})
     return jsonify({"erreur": message}), 400
@@ -248,21 +268,18 @@ def post_annuler_commande(id):
 
 # ==================== STATS ENDPOINT ====================
 
+
 @app.route("/api/stats", methods=["GET"])
 @token_requis
 def get_stats():
     """Statistiques agrégées."""
     stats = calculer_statistiques()
     top = top_produits(5)
-    
-    return jsonify({
-        "statistiques": stats,
-        "top_produits": top
-    })
+
+    return jsonify({"statistiques": stats, "top_produits": top})
 
 
 # ==================== LANCEMENT ====================
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
-
