@@ -26,15 +26,13 @@ def charger_utilisateurs():
         with open(FICHIER_UTILISATEURS, mode="r", encoding="utf-8") as fichier:
             lecteur = csv.DictReader(fichier)
             for ligne in lecteur:
-                utilisateurs.append(
-                    {
-                        "id": int(ligne["id"]),
-                        "username": ligne["username"],
-                        "password_hash": ligne["password_hash"],
-                        "salt": ligne["salt"],
-                        "created_at": ligne["created_at"],
-                    }
-                )
+                utilisateurs.append({
+                    "id": int(ligne["id"]),
+                    "username": ligne["username"],
+                    "password_hash": ligne["password_hash"],
+                    "salt": ligne["salt"],
+                    "created_at": ligne["created_at"]
+                })
     except FileNotFoundError:
         pass
     return utilisateurs
@@ -43,7 +41,7 @@ def charger_utilisateurs():
 def sauvegarder_utilisateurs(utilisateurs):
     """Sauvegarde les utilisateurs dans le CSV."""
     with open(FICHIER_UTILISATEURS, mode="w", encoding="utf-8", newline="") as fichier:
-        colonnes = ["id", "username", "password_hash", "salt", "created_at"]
+        colonnes = ["id", "username", "password_hash", "salt", "created_at", "role"]
         ecrivain = csv.DictWriter(fichier, fieldnames=colonnes)
         ecrivain.writeheader()
         ecrivain.writerows(utilisateurs)
@@ -95,7 +93,7 @@ def creer_compte(username, mot_de_passe):
         "username": username,
         "password_hash": password_hash,
         "salt": salt,
-        "created_at": datetime.now().isoformat(),
+        "created_at": datetime.now().isoformat()
     }
 
     utilisateurs.append(nouvel_utilisateur)
@@ -159,11 +157,9 @@ def enregistrer_log(username, action, succes):
         if not fichier_existe:
             ecrivain.writeheader()
 
-        ecrivain.writerow(
-            {
-                "timestamp": datetime.now().isoformat(),
-                "username": username,
-                "action": action,
-                "succes": succes,
-            }
-        )
+        ecrivain.writerow({
+            "timestamp": datetime.now().isoformat(),
+            "username": username,
+            "action": action,
+            "succes": succes
+        })
