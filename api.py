@@ -47,7 +47,7 @@ def token_requis(f):
             return jsonify({"erreur": "Token expiré"}), 401
         except jwt.InvalidTokenError:
             return jsonify({"erreur": "Token invalide"}), 401
-        
+
         return f(*args, **kwargs)
     return decorated
 
@@ -57,23 +57,23 @@ def admin_requis(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = request.headers.get("Authorization")
-        
+
         if not token:
             return jsonify({"erreur": "Token manquant"}), 401
-        
+
         try:
             # Enlever "Bearer " si présent
             if token.startswith("Bearer "):
                 token = token[7:]
-            
+
             data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
             request.utilisateur = data["username"]
             request.role = data.get("role", "user")
-            
+
             # Vérifier le rôle admin
             if request.role != "admin":
                 return jsonify({"erreur": "Accès refusé. Droits administrateur requis."}), 403
-            
+
         except jwt.ExpiredSignatureError:
             return jsonify({"erreur": "Token expiré"}), 401
         except jwt.InvalidTokenError:
@@ -102,13 +102,13 @@ def login():
             "username": user["username"],
             "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)
         }, SECRET_KEY, algorithm="HS256")
-        
+
         return jsonify({
             "message": message,
             "token": token,
             "username": user["username"]
         })
-    
+
     return jsonify({"erreur": message}), 401
 
 
@@ -259,7 +259,7 @@ def post_commande():
 
     try:
         commande, message = creer_commande(int(data["produit_id"]), int(data["quantite"]))
-        
+
         if commande:
             return jsonify({"commande": commande, "message": message}), 201
         return jsonify({"erreur": message}), 400
@@ -309,24 +309,24 @@ def get_stats():
 def get_admin_stats():
     """Statistiques globales pour l'admin."""
     from modules.auth import charger_utilisateurs
-    
+
     produits = charger_produits()
     commandes = charger_commandes()
     utilisateurs = charger_utilisateurs()
-    
+
     # Calculer les stats
     total_produits = len(produits)
     stock_total = sum(p["quantite"] for p in produits)
     valeur_stock = sum(p["prix"] * p["quantite"] for p in produits)
-    
+
     total_commandes = len(commandes)
     commandes_attente = len([c for c in commandes if c["statut"] == "en_attente"])
     commandes_validees = len([c for c in commandes if c["statut"] == "validee"])
-    
+
     ca_total = sum(c["total"] for c in commandes if c["statut"] == "validee")
-    
+
     total_users = len(utilisateurs)
-    
+
     return jsonify({
         "produits": {
             "total": total_produits,
@@ -350,9 +350,9 @@ def get_admin_stats():
 def get_all_users():
     """Liste tous les utilisateurs (admin only)."""
     from modules.auth import charger_utilisateurs
-    
+
     utilisateurs = charger_utilisateurs()
-    
+
     # Ne pas exposer les mots de passe hashés
     users_safe = []
     for user in utilisateurs:
@@ -362,7 +362,7 @@ def get_all_users():
             "role": user.get("role", "user"),
             "created_at": user["created_at"]
         })
-    
+
     return jsonify({"utilisateurs": users_safe, "total": len(users_safe)})
 
 
@@ -379,7 +379,7 @@ def get_all_orders():
 def admin_validate_order(id):
     """Valider une commande (admin only)."""
     succes, message = valider_commande(id)
-    
+
     if succes:
         return jsonify({"message": message})
     return jsonify({"erreur": message}), 400
@@ -390,7 +390,7 @@ def admin_validate_order(id):
 def admin_cancel_order(id):
     """Annuler une commande (admin only)."""
     succes, message = annuler_commande(id)
-    
+
     if succes:
         return jsonify({"message": message})
     return jsonify({"erreur": message}), 400
@@ -401,11 +401,11 @@ def admin_cancel_order(id):
 def admin_create_product():
     """Créer un produit (admin only)."""
     data = request.get_json()
-    
+
     champs_requis = ["nom", "description", "prix", "quantite"]
     if not data or not all(champ in data for champ in champs_requis):
         return jsonify({"erreur": "Champs requis: nom, description, prix, quantite"}), 400
-    
+
     try:
         produits = charger_produits()
         nouveau = ajouter_produit(
@@ -425,16 +425,16 @@ def admin_create_product():
 def admin_update_product(id):
     """Modifier un produit (admin only)."""
     data = request.get_json()
-    
+
     if not data:
         return jsonify({"erreur": "Données requises"}), 400
-    
+
     produits = charger_produits()
     produit = trouver_produit(produits, id)
-    
+
     if not produit:
         return jsonify({"erreur": "Produit introuvable"}), 404
-    
+
     try:
         modifications = {}
         if "nom" in data:
@@ -445,7 +445,7 @@ def admin_update_product(id):
             modifications["prix"] = float(data["prix"])
         if "quantite" in data:
             modifications["quantite"] = int(data["quantite"])
-        
+
         modifier_produit(produits, id, **modifications)
         return jsonify(trouver_produit(charger_produits(), id))
     except ValueError:
@@ -457,10 +457,10 @@ def admin_update_product(id):
 def admin_delete_product(id):
     """Supprimer un produit (admin only)."""
     produits = charger_produits()
-    
+
     if not trouver_produit(produits, id):
         return jsonify({"erreur": "Produit introuvable"}), 404
-    
+
     supprimer_produit(produits, id)
     return jsonify({"message": "Produit supprimé"}), 200
 
@@ -469,7 +469,7 @@ def admin_delete_product(id):
 def init_admin():
     """Créer le compte admin initial."""
     admin, message = creer_admin_initial()
-    
+
     if admin:
         return jsonify({"message": message, "username": "admin", "password": "Admin123"}), 201
     return jsonify({"message": message}), 400
