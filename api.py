@@ -11,7 +11,7 @@ from modules.produits import (
     supprimer_produit,
     trouver_produit,
 )
-from modules.auth import verifier_connexion, creer_compte
+from modules.auth import verifier_connexion, creer_compte, charger_utilisateurs, creer_admin_initial
 from modules.commandes import charger_commandes, creer_commande, valider_commande, annuler_commande
 from modules.stats import calculer_statistiques, top_produits
 
@@ -98,15 +98,20 @@ def login():
     user, message = verifier_connexion(data["username"], data["password"])
 
     if user:
+        # CORRECTION: Inclure le rôle dans le token JWT
+        user_role = user.get("role", "user")
         token = jwt.encode({
             "username": user["username"],
+            "role": user_role,
             "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)
         }, SECRET_KEY, algorithm="HS256")
 
+        # CORRECTION: Renvoyer le rôle dans la réponse
         return jsonify({
             "message": message,
             "token": token,
-            "username": user["username"]
+            "username": user["username"],
+            "role": user_role
         })
 
     return jsonify({"erreur": message}), 401
@@ -258,13 +263,18 @@ def post_commande():
         return jsonify({"erreur": "produit_id et quantite requis"}), 400
 
     try:
-        commande, message = creer_commande(int(data["produit_id"]), int(data["quantite"]))
+        # CORRECTION: Passer le username comme 3ème argument
+        commande, message = creer_commande(
+            int(data["produit_id"]),
+            int(data["quantite"]),
+            request.utilisateur
+        )
 
         if commande:
             return jsonify({"commande": commande, "message": message}), 201
         return jsonify({"erreur": message}), 400
-    except ValueError:
-        return jsonify({"erreur": "Données invalides"}), 400
+    except Exception as e:
+        return jsonify({"erreur": f"Erreur: {str(e)}"}), 400
 
 
 @app.route("/api/orders/<int:id>/validate", methods=["POST"])
@@ -308,8 +318,6 @@ def get_stats():
 @admin_requis
 def get_admin_stats():
     """Statistiques globales pour l'admin."""
-    from modules.auth import charger_utilisateurs
-
     produits = charger_produits()
     commandes = charger_commandes()
     utilisateurs = charger_utilisateurs()
@@ -349,8 +357,6 @@ def get_admin_stats():
 @admin_requis
 def get_all_users():
     """Liste tous les utilisateurs (admin only)."""
-    from modules.auth import charger_utilisateurs
-
     utilisateurs = charger_utilisateurs()
 
     # Ne pas exposer les mots de passe hashés
