@@ -150,7 +150,8 @@ def afficher_tableau_bord():
     print("\n--- Top 5 Produits ---")
     for i, p in enumerate(top_produits(5), 1):
         print(
-            f"{i}. {
+            f"{i}. {p['nom']} : {p['quantite_vendue']} vendus ({p['revenus']:.2f}€)"
+        )
                 p['nom']} : {
                 p['quantite_vendue']} vendus ({
                 p['revenus']:.2f}€)")
