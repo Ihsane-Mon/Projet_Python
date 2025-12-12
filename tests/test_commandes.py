@@ -1,5 +1,9 @@
-from modules.commandes import (annuler_commande, charger_commandes,
-                               creer_commande, valider_commande)
+from modules.commandes import (
+    annuler_commande,
+    charger_commandes,
+    creer_commande,
+    valider_commande,
+)
 
 # Créer une commande
 print("=== Création d'une commande ===")
@@ -12,12 +16,9 @@ if commande:
 print("\n=== Liste des commandes ===")
 for c in charger_commandes():
     print(
-        f"#{
-            c['id']} | Produit {
-            c['produit_id']} | Qté: {
-                c['quantite']} | Total: {
-                    c['total']}€ | Statut: {
-                        c['statut']}")
+        f"#{c['id']} | Produit {c['produit_id']} | Qté: {c['quantite']} | "
+        f"Total: {c['total']}€ | Statut: {c['statut']}"
+    )
 
 # Valider la commande
 print("\n=== Validation ===")
