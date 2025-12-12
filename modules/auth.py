@@ -1,8 +1,9 @@
 import csv
 import hashlib
+import os
 import secrets
 from datetime import datetime
-import os
+
 from modules.password_check import verifier_mot_de_passe_compromis
 
 FICHIER_UTILISATEURS = "data/utilisateurs.csv"

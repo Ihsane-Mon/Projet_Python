@@ -1,18 +1,16 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from functools import wraps
-import jwt
 import datetime
+from functools import wraps
 
-from modules.produits import (
-    charger_produits,
-    ajouter_produit,
-    modifier_produit,
-    supprimer_produit,
-    trouver_produit,
-)
-from modules.auth import verifier_connexion, creer_compte
-from modules.commandes import charger_commandes, creer_commande, valider_commande, annuler_commande
+import jwt
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+
+from modules.auth import creer_compte, verifier_connexion
+from modules.commandes import (annuler_commande, charger_commandes,
+                               creer_commande, valider_commande)
+from modules.produits import (ajouter_produit, charger_produits,
+                              modifier_produit, supprimer_produit,
+                              trouver_produit)
 from modules.stats import calculer_statistiques, top_produits
 
 app = Flask(__name__)

@@ -1,9 +1,6 @@
 from modules.commandes import creer_commande, valider_commande
-from modules.stats import (
-    afficher_tableau_bord,
-    graphique_top_produits,
-    graphique_revenus,
-)
+from modules.stats import (afficher_tableau_bord, graphique_revenus,
+                           graphique_top_produits)
 
 # Créer quelques commandes pour avoir des données
 print("=== Création de commandes test ===")

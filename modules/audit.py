@@ -1,6 +1,6 @@
+import os
 import subprocess
 import sys
-import os
 from datetime import datetime
 
 DOSSIER_RAPPORTS = "rapports"

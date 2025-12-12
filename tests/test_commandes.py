@@ -1,9 +1,5 @@
-from modules.commandes import (
-    creer_commande,
-    charger_commandes,
-    valider_commande,
-    annuler_commande,
-)
+from modules.commandes import (annuler_commande, charger_commandes,
+                               creer_commande, valider_commande)
 
 # Créer une commande
 print("=== Création d'une commande ===")

@@ -1,9 +1,11 @@
-import matplotlib.pyplot as plt
-import seaborn as sns
 from collections import defaultdict
 from datetime import datetime
-from modules.produits import charger_produits
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 from modules.commandes import charger_commandes
+from modules.produits import charger_produits
 
 
 def calculer_statistiques():
@@ -153,5 +155,5 @@ def afficher_tableau_bord():
             f"{i}. {p['nom']} : {p['quantite_vendue']} vendus ({p['revenus']:.2f}€)"
         )
                 p['nom']} : {
-                p['quantite_vendue']} vendus ({
-                p['revenus']:.2f}€)")
+                p['quantite_vendue']} vendus({
+                p['revenus']: .2f}€)")

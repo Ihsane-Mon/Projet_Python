@@ -1,13 +1,10 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox, ttk
+
 from modules.auth import creer_compte, verifier_connexion
-from modules.produits import (
-    charger_produits,
-    ajouter_produit,
-    modifier_produit,
-    supprimer_produit,
-    trouver_produit,
-)
+from modules.produits import (ajouter_produit, charger_produits,
+                              modifier_produit, supprimer_produit,
+                              trouver_produit)
 
 
 class Application:

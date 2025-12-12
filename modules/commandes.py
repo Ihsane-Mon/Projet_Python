@@ -1,7 +1,9 @@
 import csv
 import os
 from datetime import datetime
-from modules.produits import charger_produits, trouver_produit, sauvegarder_produits
+
+from modules.produits import (charger_produits, sauvegarder_produits,
+                              trouver_produit)
 
 FICHIER_COMMANDES = "data/commandes.csv"
 
