@@ -1,5 +1,6 @@
 import os
 
+
 def clean_file(filepath):
     with open(filepath, 'r', encoding='utf-8') as f:
         lines = f.readlines()
@@ -13,6 +14,7 @@ def clean_file(filepath):
 
     with open(filepath, 'w', encoding='utf-8') as f:
         f.writelines(cleaned_lines)
+
 
 # Parcourt tous les fichiers Python
 for root, dirs, files in os.walk('.'):

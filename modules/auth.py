@@ -1,8 +1,9 @@
 import csv
 import hashlib
+import os
 import secrets
 from datetime import datetime
-import os
+
 from modules.password_check import verifier_mot_de_passe_compromis
 
 FICHIER_UTILISATEURS = "data/utilisateurs.csv"
@@ -163,31 +164,24 @@ def enregistrer_log(username, action, succes):
             "action": action,
             "succes": succes
         })
-
-
 def creer_admin_initial():
-    """Crée le compte admin initial s'il n'existe pas."""
+    """Crée un compte administrateur par défaut si aucun admin n'existe."""
     utilisateurs = charger_utilisateurs()
 
-    # Vérifier si admin existe déjà
-    if trouver_utilisateur(utilisateurs, "admin"):
-        return None, "Le compte admin existe déjà."
+    # Vérifier s'il existe déjà un admin
+    for user in utilisateurs:
+        if user.get("role") == "admin":
+            return None, "Un compte administrateur existe déjà."
 
-    # Créer le compte admin
-    salt = generer_salt()
-    password_hash = hacher_mot_de_passe("Admin123", salt)
-
-    nouvel_admin = {
-        "id": max([u["id"] for u in utilisateurs], default=0) + 1,
+    # Créer un compte admin par défaut
+    admin = {
+        "id": max((u["id"] for u in utilisateurs), default=0) + 1,
         "username": "admin",
-        "password_hash": password_hash,
-        "salt": salt,
-        "created_at": datetime.now().isoformat(),
-        "role": "admin"
+        "password": hacher_mot_de_passe("Admin123"),
+        "role": "admin",
+        "created_at": datetime.now().isoformat(timespec="seconds"),
     }
-
-    utilisateurs.append(nouvel_admin)
+    utilisateurs.append(admin)
     sauvegarder_utilisateurs(utilisateurs)
-    enregistrer_log("admin", "creation_compte_admin", True)
 
-    return nouvel_admin, "Compte admin créé avec succès."
+    return admin, "Compte administrateur initial créé avec succès."

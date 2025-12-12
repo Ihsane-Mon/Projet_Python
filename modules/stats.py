@@ -1,9 +1,11 @@
-import matplotlib.pyplot as plt
-import seaborn as sns
 from collections import defaultdict
 from datetime import datetime
-from modules.produits import charger_produits
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 from modules.commandes import charger_commandes
+from modules.produits import charger_produits
 
 
 def calculer_statistiques():
@@ -150,7 +152,8 @@ def afficher_tableau_bord():
     print("\n--- Top 5 Produits ---")
     for i, p in enumerate(top_produits(5), 1):
         print(
-            f"{i}. {
+            f"{i}. {p['nom']} : {p['quantite_vendue']} vendus ({p['revenus']:.2f}€)"
+        )
                 p['nom']} : {
-                p['quantite_vendue']} vendus ({
-                p['revenus']:.2f}€)")
+                p['quantite_vendue']} vendus({
+                p['revenus']: .2f}€)")
