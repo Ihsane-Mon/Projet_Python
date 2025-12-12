@@ -164,3 +164,24 @@ def enregistrer_log(username, action, succes):
             "action": action,
             "succes": succes
         })
+def creer_admin_initial():
+    """Crée un compte administrateur par défaut si aucun admin n'existe."""
+    utilisateurs = charger_utilisateurs()
+
+    # Vérifier s'il existe déjà un admin
+    for user in utilisateurs:
+        if user.get("role") == "admin":
+            return None, "Un compte administrateur existe déjà."
+
+    # Créer un compte admin par défaut
+    admin = {
+        "id": max((u["id"] for u in utilisateurs), default=0) + 1,
+        "username": "admin",
+        "password": hacher_mot_de_passe("Admin123"),
+        "role": "admin",
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+    }
+    utilisateurs.append(admin)
+    sauvegarder_utilisateurs(utilisateurs)
+
+    return admin, "Compte administrateur initial créé avec succès."

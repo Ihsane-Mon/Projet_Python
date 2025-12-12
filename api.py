@@ -5,7 +5,7 @@ import jwt
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
-from modules.auth import creer_compte, verifier_connexion
+from modules.auth import creer_compte, creer_admin_initial, verifier_connexion
 from modules.commandes import (annuler_commande, charger_commandes,
                                creer_commande, valider_commande)
 from modules.produits import (ajouter_produit, charger_produits,
