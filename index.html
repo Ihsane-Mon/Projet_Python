@@ -324,30 +324,27 @@
                 setSuccess('');
 
                 try {
-                    const promises = cart.map(item => 
-                        fetch(`${API_URL}/orders`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                            body: JSON.stringify({ produit_id: item.product.id, quantite: item.quantity }),
-                        })
-                    );
+                    // Préparer les items du panier
+                    const items = cart.map(item => ({
+                        produit_id: item.product.id,
+                        quantite: item.quantity
+                    }));
 
-                    const responses = await Promise.all(promises);
-                    const allSuccess = responses.every(r => r.ok);
+                    // Envoyer UNE SEULE commande avec tous les produits
+                    const response = await fetch(`${API_URL}/orders`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({ items }),
+                    });
 
-                    if (allSuccess) {
-                        setSuccess('🎉 Commandes créées avec succès !');
+                    if (response.ok) {
+                        const data = await response.json();
+                        setSuccess(`🎉 Commande #${data.commande.id} créée avec succès !`);
                         onClearCart();
                         setTimeout(() => onCheckoutComplete(), 1500);
                     } else {
-                        const errors = await Promise.all(responses.map(async (r, i) => {
-                            if (!r.ok) {
-                                const data = await r.json();
-                                return `${cart[i].product.nom}: ${data.erreur}`;
-                            }
-                            return null;
-                        }));
-                        setError(`Erreurs: ${errors.filter(e => e).join(', ')}`);
+                        const data = await response.json();
+                        setError(data.erreur || 'Erreur lors de la création de la commande');
                     }
                 } catch (err) {
                     setError('Erreur de connexion au serveur. Vérifiez que l\'API est lancée.');
@@ -481,13 +478,30 @@
                     ) : (
                         <div className="orders-grid">
                             {orders.map((order) => (
-                                <div key={order.id} className="order-card">
-                                    <div className="order-id-badge">#{order.id}</div>
-                                    <div>
-                                        <div className="order-product-name">{getProductName(order.produit_id)}</div>
-                                        <div className="order-meta">Qté: {order.quantite} • Total: {order.total.toFixed(2)}€ • {new Date(order.date).toLocaleDateString('fr-FR')}</div>
+                                <div key={order.id} className="order-card" style={{display: 'block'}}>
+                                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem'}}>
+                                        <div className="order-id-badge">#{order.id}</div>
+                                        <div className={`order-status status-${order.statut.replace('_', '-')}`}>{getStatusLabel(order.statut)}</div>
                                     </div>
-                                    <div className={`order-status status-${order.statut.replace('_', '-')}`}>{getStatusLabel(order.statut)}</div>
+                                    <div style={{marginBottom: '0.5rem'}}>
+                                        <div style={{fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem'}}>
+                                            {new Date(order.date).toLocaleDateString('fr-FR')} à {new Date(order.date).toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}
+                                        </div>
+                                        {order.lignes && order.lignes.length > 0 && (
+                                            <div style={{borderTop: '1px solid var(--border-color)', paddingTop: '0.5rem'}}>
+                                                {order.lignes.map((ligne, idx) => (
+                                                    <div key={idx} style={{display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', fontSize: '0.9rem'}}>
+                                                        <span>{getProductName(ligne.produit_id)} <span style={{color: 'var(--text-secondary)'}}>x{ligne.quantite}</span></span>
+                                                        <span style={{color: 'var(--accent)'}}>{ligne.total.toFixed(2)}€</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div style={{borderTop: '1px solid var(--border-color)', paddingTop: '0.5rem', display: 'flex', justifyContent: 'space-between', fontWeight: 600}}>
+                                        <span>Total</span>
+                                        <span style={{color: 'var(--accent)', fontSize: '1.1rem'}}>{order.total.toFixed(2)}€</span>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -575,6 +589,28 @@
                 } catch (err) {}
             };
 
+            const handleDownloadData = async (type) => {
+                try {
+                    const response = await fetch(`${API_URL}/admin/export/${type}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `${type}.csv`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                    }
+                } catch (err) {
+                    console.error('Erreur lors du téléchargement:', err);
+                }
+            };
+
             if (loading) return <div className="loading">Chargement du panneau admin...</div>;
 
             return (
@@ -592,16 +628,32 @@
                     </div>
 
                     {activeTab === 'stats' && stats && (
-                        <div className="stats-grid">
-                            <div className="stat-card"><div className="stat-icon">📦</div><div className="stat-value">{stats.produits?.total || 0}</div><div className="stat-label">Produits</div></div>
-                            <div className="stat-card"><div className="stat-icon">📊</div><div className="stat-value">{stats.produits?.stock_total || 0}</div><div className="stat-label">Stock total</div></div>
-                            <div className="stat-card"><div className="stat-icon">💰</div><div className="stat-value">{stats.produits?.valeur_stock?.toFixed(0) || 0}€</div><div className="stat-label">Valeur stock</div></div>
-                            <div className="stat-card"><div className="stat-icon">🛒</div><div className="stat-value">{stats.commandes?.total || 0}</div><div className="stat-label">Commandes</div></div>
-                            <div className="stat-card"><div className="stat-icon">⏳</div><div className="stat-value">{stats.commandes?.en_attente || 0}</div><div className="stat-label">En attente</div></div>
-                            <div className="stat-card"><div className="stat-icon">✅</div><div className="stat-value">{stats.commandes?.validees || 0}</div><div className="stat-label">Validées</div></div>
-                            <div className="stat-card"><div className="stat-icon">💵</div><div className="stat-value">{stats.commandes?.ca_total?.toFixed(0) || 0}€</div><div className="stat-label">Chiffre d'affaires</div></div>
-                            <div className="stat-card"><div className="stat-icon">👥</div><div className="stat-value">{stats.utilisateurs?.total || 0}</div><div className="stat-label">Utilisateurs</div></div>
-                        </div>
+                        <>
+                            <div className="stats-grid">
+                                <div className="stat-card"><div className="stat-icon">📦</div><div className="stat-value">{stats.produits?.total || 0}</div><div className="stat-label">Produits</div></div>
+                                <div className="stat-card"><div className="stat-icon">📊</div><div className="stat-value">{stats.produits?.stock_total || 0}</div><div className="stat-label">Stock total</div></div>
+                                <div className="stat-card"><div className="stat-icon">💰</div><div className="stat-value">{stats.produits?.valeur_stock?.toFixed(0) || 0}€</div><div className="stat-label">Valeur stock</div></div>
+                                <div className="stat-card"><div className="stat-icon">🛒</div><div className="stat-value">{stats.commandes?.total || 0}</div><div className="stat-label">Commandes</div></div>
+                                <div className="stat-card"><div className="stat-icon">⏳</div><div className="stat-value">{stats.commandes?.en_attente || 0}</div><div className="stat-label">En attente</div></div>
+                                <div className="stat-card"><div className="stat-icon">✅</div><div className="stat-value">{stats.commandes?.validees || 0}</div><div className="stat-label">Validées</div></div>
+                                <div className="stat-card"><div className="stat-icon">💵</div><div className="stat-value">{stats.commandes?.ca_total?.toFixed(0) || 0}€</div><div className="stat-label">Chiffre d'affaires</div></div>
+                                <div className="stat-card"><div className="stat-icon">👥</div><div className="stat-value">{stats.utilisateurs?.total || 0}</div><div className="stat-label">Utilisateurs</div></div>
+                            </div>
+                            <div style={{marginTop: '2rem', background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem'}}>
+                                <h3 style={{marginBottom: '1rem', color: 'var(--text-primary)'}}>📥 Télécharger les données</h3>
+                                <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem'}}>
+                                    <button className="btn btn-primary" onClick={() => handleDownloadData('products')}>
+                                        📦 Produits (CSV)
+                                    </button>
+                                    <button className="btn btn-primary" onClick={() => handleDownloadData('orders')}>
+                                        🛒 Commandes (CSV)
+                                    </button>
+                                    <button className="btn btn-primary" onClick={() => handleDownloadData('users')}>
+                                        👥 Utilisateurs (CSV)
+                                    </button>
+                                </div>
+                            </div>
+                        </>
                     )}
 
                     {activeTab === 'products' && (
@@ -655,18 +707,37 @@
 
                     {activeTab === 'orders' && (
                         <div className="orders-grid">
-                            {orders.map((order) => {
-                                const product = products.find(p => p.id === order.produit_id);
-                                return (
-                                    <div key={order.id} className="order-card" style={{gridTemplateColumns: 'auto 1fr auto auto'}}>
-                                        <div className="order-id-badge">#{order.id}</div>
-                                        <div>
-                                            <div className="order-product-name">{product ? product.nom : `Produit #${order.produit_id}`}</div>
-                                            <div className="order-meta">Qté: {order.quantite} • Total: {order.total.toFixed(2)}€ • {new Date(order.date).toLocaleDateString('fr-FR')}</div>
+                            {orders.map((order) => (
+                                <div key={order.id} className="order-card" style={{display: 'block'}}>
+                                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem'}}>
+                                        <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
+                                            <div className="order-id-badge">#{order.id}</div>
+                                            <span style={{fontSize: '0.85rem', color: 'var(--text-secondary)'}}>@{order.username}</span>
                                         </div>
                                         <div className={`order-status status-${order.statut.replace('_', '-')}`}>
                                             {order.statut === 'en_attente' ? 'En attente' : order.statut === 'validee' ? 'Validée' : 'Annulée'}
                                         </div>
+                                    </div>
+                                    <div style={{marginBottom: '0.5rem'}}>
+                                        <div style={{fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem'}}>
+                                            {new Date(order.date).toLocaleDateString('fr-FR')} à {new Date(order.date).toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}
+                                        </div>
+                                        {order.lignes && order.lignes.length > 0 && (
+                                            <div style={{borderTop: '1px solid var(--border-color)', paddingTop: '0.5rem'}}>
+                                                {order.lignes.map((ligne, idx) => {
+                                                    const product = products.find(p => p.id === ligne.produit_id);
+                                                    return (
+                                                        <div key={idx} style={{display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', fontSize: '0.9rem'}}>
+                                                            <span>{product ? product.nom : `Produit #${ligne.produit_id}`} <span style={{color: 'var(--text-secondary)'}}>x{ligne.quantite}</span></span>
+                                                            <span style={{color: 'var(--accent)'}}>{ligne.total.toFixed(2)}€</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div style={{borderTop: '1px solid var(--border-color)', paddingTop: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                        <span style={{fontWeight: 600}}>Total: <span style={{color: 'var(--accent)', fontSize: '1.1rem'}}>{order.total.toFixed(2)}€</span></span>
                                         {order.statut === 'en_attente' && (
                                             <div style={{display: 'flex', gap: '0.5rem'}}>
                                                 <button className="btn btn-primary" style={{padding: '0.4rem 0.7rem'}} onClick={() => handleValidateOrder(order.id)}>✓</button>
@@ -674,8 +745,8 @@
                                             </div>
                                         )}
                                     </div>
-                                );
-                            })}
+                                </div>
+                            ))}
                         </div>
                     )}
 

@@ -154,6 +154,3 @@ def afficher_tableau_bord():
         print(
             f"{i}. {p['nom']} : {p['quantite_vendue']} vendus ({p['revenus']:.2f}€)"
         )
-                p['nom']} : {
-                p['quantite_vendue']} vendus({
-                p['revenus']: .2f}€)")

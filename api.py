@@ -1,3 +1,4 @@
+import csv
 import datetime
 from functools import wraps
 
@@ -5,8 +6,10 @@ import jwt
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
-from modules.auth import creer_compte, creer_admin_initial, verifier_connexion
+from modules.auth import (charger_utilisateurs, creer_admin_initial,
+                          creer_compte, verifier_connexion)
 from modules.commandes import (annuler_commande, charger_commandes,
+                               charger_lignes_commandes, charger_commande_complete,
                                creer_commande, valider_commande)
 from modules.produits import (ajouter_produit, charger_produits,
                               modifier_produit, supprimer_produit,
@@ -246,33 +249,61 @@ def delete_produit(id):
 @app.route("/api/orders", methods=["GET"])
 @token_requis
 def get_commandes():
-    """Liste toutes les commandes de l'utilisateur connecté."""
+    """Liste toutes les commandes de l'utilisateur connecté avec leurs lignes."""
     commandes = charger_commandes(username=request.utilisateur)
+    
+    # Enrichir chaque commande avec ses lignes de produits
+    for commande in commandes:
+        commande["lignes"] = charger_lignes_commandes(commande["id"])
+    
     return jsonify({"commandes": commandes, "total": len(commandes)})
 
 
 @app.route("/api/orders", methods=["POST"])
 @token_requis
 def post_commande():
-    """Créer une commande."""
+    """Créer une commande à partir d'un panier (plusieurs produits)."""
     data = request.get_json()
 
-    if not data or "produit_id" not in data or "quantite" not in data:
-        return jsonify({"erreur": "produit_id et quantite requis"}), 400
+    # Support de l'ancien format (1 produit) et du nouveau (panier)
+    if not data:
+        return jsonify({"erreur": "Données requises"}), 400
+    
+    # Nouveau format : panier avec plusieurs produits
+    if "items" in data:
+        items = data["items"]
+        if not items or not isinstance(items, list):
+            return jsonify({"erreur": "Le panier doit contenir au moins un produit"}), 400
+        
+        # Valider le format de chaque item
+        for item in items:
+            if "produit_id" not in item or "quantite" not in item:
+                return jsonify({"erreur": "Chaque item doit avoir produit_id et quantite"}), 400
+        
+        try:
+            commande, message = creer_commande(items, request.utilisateur)
+            if commande:
+                return jsonify({"commande": commande, "message": message}), 201
+            return jsonify({"erreur": message}), 400
+        except Exception as e:
+            return jsonify({"erreur": f"Erreur: {str(e)}"}), 400
+    
+    # Ancien format : 1 seul produit (rétrocompatibilité)
+    elif "produit_id" in data and "quantite" in data:
+        try:
+            items = [{
+                "produit_id": int(data["produit_id"]),
+                "quantite": int(data["quantite"])
+            }]
+            commande, message = creer_commande(items, request.utilisateur)
+            if commande:
+                return jsonify({"commande": commande, "message": message}), 201
+            return jsonify({"erreur": message}), 400
+        except Exception as e:
+            return jsonify({"erreur": f"Erreur: {str(e)}"}), 400
+    
+    return jsonify({"erreur": "Format invalide. Utilisez 'items' (liste) ou 'produit_id' + 'quantite'"}), 400
 
-    try:
-        # CORRECTION: Passer le username comme 3ème argument
-        commande, message = creer_commande(
-            int(data["produit_id"]),
-            int(data["quantite"]),
-            request.utilisateur
-        )
-
-        if commande:
-            return jsonify({"commande": commande, "message": message}), 201
-        return jsonify({"erreur": message}), 400
-    except Exception as e:
-        return jsonify({"erreur": f"Erreur: {str(e)}"}), 400
 
 
 @app.route("/api/orders/<int:id>/validate", methods=["POST"])
@@ -373,8 +404,13 @@ def get_all_users():
 @app.route("/api/admin/orders", methods=["GET"])
 @admin_requis
 def get_all_orders():
-    """Liste toutes les commandes (admin only)."""
+    """Liste toutes les commandes (admin only) avec leurs lignes."""
     commandes = charger_commandes()
+    
+    # Enrichir chaque commande avec ses lignes de produits
+    for commande in commandes:
+        commande["lignes"] = charger_lignes_commandes(commande["id"])
+    
     return jsonify({"commandes": commandes, "total": len(commandes)})
 
 
@@ -477,6 +513,93 @@ def init_admin():
     if admin:
         return jsonify({"message": message, "username": "admin", "password": "Admin123"}), 201
     return jsonify({"message": message}), 400
+
+
+# ==================== EXPORT/DOWNLOAD ENDPOINTS ====================
+
+@app.route("/api/admin/export/products", methods=["GET"])
+@admin_requis
+def export_products():
+    """Télécharger tous les produits en CSV."""
+    import io
+    from flask import make_response
+    
+    produits = charger_produits()
+    
+    # Créer le CSV en mémoire
+    output = io.StringIO()
+    if produits:
+        colonnes = produits[0].keys()
+        writer = csv.DictWriter(output, fieldnames=colonnes)
+        writer.writeheader()
+        writer.writerows(produits)
+    
+    # Créer la réponse avec le bon type MIME
+    response = make_response(output.getvalue())
+    response.headers["Content-Disposition"] = "attachment; filename=produits.csv"
+    response.headers["Content-Type"] = "text/csv; charset=utf-8"
+    
+    return response
+
+
+@app.route("/api/admin/export/orders", methods=["GET"])
+@admin_requis
+def export_orders():
+    """Télécharger toutes les commandes en CSV."""
+    import io
+    from flask import make_response
+    
+    commandes = charger_commandes()
+    
+    # Créer le CSV en mémoire
+    output = io.StringIO()
+    if commandes:
+        colonnes = commandes[0].keys()
+        writer = csv.DictWriter(output, fieldnames=colonnes)
+        writer.writeheader()
+        writer.writerows(commandes)
+    
+    # Créer la réponse avec le bon type MIME
+    response = make_response(output.getvalue())
+    response.headers["Content-Disposition"] = "attachment; filename=commandes.csv"
+    response.headers["Content-Type"] = "text/csv; charset=utf-8"
+    
+    return response
+
+
+@app.route("/api/admin/export/users", methods=["GET"])
+@admin_requis
+def export_users():
+    """Télécharger tous les utilisateurs en CSV (sans les mots de passe)."""
+    import io
+    from flask import make_response
+    
+    utilisateurs = charger_utilisateurs()
+    
+    # Retirer les informations sensibles
+    users_safe = []
+    for user in utilisateurs:
+        users_safe.append({
+            "id": user["id"],
+            "username": user["username"],
+            "role": user.get("role", "user"),
+            "created_at": user["created_at"]
+        })
+    
+    # Créer le CSV en mémoire
+    output = io.StringIO()
+    if users_safe:
+        colonnes = users_safe[0].keys()
+        writer = csv.DictWriter(output, fieldnames=colonnes)
+        writer.writeheader()
+        writer.writerows(users_safe)
+    
+    # Créer la réponse avec le bon type MIME
+    response = make_response(output.getvalue())
+    response.headers["Content-Disposition"] = "attachment; filename=utilisateurs.csv"
+    response.headers["Content-Type"] = "text/csv; charset=utf-8"
+    
+    return response
 
 
 # ==================== LANCEMENT ====================
