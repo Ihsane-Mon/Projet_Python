@@ -14,6 +14,7 @@ r = requests.post(
     json={ 
         "username": "marie",
         "password": "Xk9mP2qL7nB4vR"})
+timeout=10
 print(r.json())
 token = r.json().get("token")
 
