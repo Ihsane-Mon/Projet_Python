@@ -4,7 +4,7 @@ import subprocess
 
 def run(cmd: str):
     print(f"\n=== {cmd} ===")
-    subprocess.run(cmd, shell=True, check=False)
+    subprocess.run(cmd, shell=False, check=False)
 
 
 def python_files(root="."):

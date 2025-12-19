@@ -11,7 +11,7 @@ def verifier_mot_de_passe_compromis(mot_de_passe):
     Retourne : (est_compromis, nombre_de_fois)
     """
     # Étape 1 : Hacher en SHA-1 (requis par l'API)
-    sha1_hash = hashlib.sha1(mot_de_passe.encode()).hexdigest().upper()
+    sha1_hash = hashlib.sha1(mot_de_passe.encode()).hexdigest().upper() # nosec
 
     # Étape 2 : Séparer le hash (5 premiers + reste)
     prefixe = sha1_hash[:5]
