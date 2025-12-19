@@ -13,12 +13,14 @@ r = requests.post(
     f"{BASE_URL}/auth/login",
     json={ 
         "username": "marie",
-        "password": "Xk9mP2qL7nB4vR"})
-timeout=10
+        "password": "Xk9mP2qL7nB4vR"
+    },              
+    timeout=10      
+)                   
 print(r.json())
 token = r.json().get("token")
 
-# Test créer produit
+# Test créer produit (avec auth)
 print("\n=== POST /products ===")
 headers = {"Authorization": f"Bearer {token}"}
 r = requests.post(
