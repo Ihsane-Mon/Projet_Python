@@ -18,7 +18,7 @@ timeout=10
 print(r.json())
 token = r.json().get("token")
 
-# Test créer produit (avec auth)
+# Test créer produit
 print("\n=== POST /products ===")
 headers = {"Authorization": f"Bearer {token}"}
 r = requests.post(
