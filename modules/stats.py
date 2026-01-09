@@ -154,3 +154,37 @@ def afficher_tableau_bord():
         print(
             f"{i}. {p['nom']} : {p['quantite_vendue']} vendus ({p['revenus']:.2f}€)"
         )
+
+def get_evolution_ventes_json():
+    """Retourne les données d'évolution des ventes en format JSON."""
+    commandes = charger_commandes()
+    commandes_valides = [c for c in commandes if c["statut"] == "validee"]
+
+    # Grouper par date
+    ventes_par_jour = defaultdict(float)
+    for c in commandes_valides:
+        date = c["date"][:10]  # Garder seulement YYYY-MM-DD
+        ventes_par_jour[date] += c["total"]
+
+    # Trier par date
+    dates = sorted(ventes_par_jour.keys())
+    
+    return {
+        "dates": dates,
+        "totaux": [ventes_par_jour[d] for d in dates]
+    }
+
+
+def get_top_produits_json(limite=5):
+    """Retourne les top produits en format JSON."""
+    return top_produits(limite)
+
+
+def get_revenus_par_produit_json(limite=5):
+    """Retourne les revenus par produit en format JSON pour un graphique en secteurs."""
+    top = top_produits(limite)
+    
+    return {
+        "noms": [p["nom"] for p in top],
+        "revenus": [p["revenus"] for p in top]
+    }
