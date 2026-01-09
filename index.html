@@ -11,6 +11,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <div id="root"></div>
@@ -510,6 +511,63 @@
             );
         }
 
+        function ChartComponent({ title, type, data }) {
+            const canvasRef = React.useRef(null);
+            const chartRef = React.useRef(null);
+
+            useEffect(() => {
+                if (!canvasRef.current || !data) return;
+
+                // Détruire le graphique précédent si existant
+                if (chartRef.current) {
+                    chartRef.current.destroy();
+                }
+
+                const ctx = canvasRef.current.getContext('2d');
+                chartRef.current = new Chart(ctx, {
+                    type: type,
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: 'var(--text-primary)',
+                                    font: { family: 'Archivo, sans-serif' }
+                                }
+                            }
+                        },
+                        scales: type !== 'doughnut' && type !== 'pie' ? {
+                            y: {
+                                ticks: { color: 'var(--text-secondary)' },
+                                grid: { color: 'var(--border-color)' }
+                            },
+                            x: {
+                                ticks: { color: 'var(--text-secondary)' },
+                                grid: { color: 'var(--border-color)' }
+                            }
+                        } : {}
+                    }
+                });
+
+                return () => {
+                    if (chartRef.current) {
+                        chartRef.current.destroy();
+                    }
+                };
+            }, [data, type]);
+
+            return (
+                <div style={{marginTop: '2rem', background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem'}}>
+                    <h3 style={{marginBottom: '1rem', color: 'var(--text-primary)'}}>{title}</h3>
+                    <div style={{position: 'relative', height: '300px'}}>
+                        <canvas ref={canvasRef}></canvas>
+                    </div>
+                </div>
+            );
+        }
+
         function AdminPage({ token }) {
             const [stats, setStats] = useState(null);
             const [products, setProducts] = useState([]);
@@ -520,21 +578,31 @@
             const [activeTab, setActiveTab] = useState('stats');
             const [editingProduct, setEditingProduct] = useState(null);
             const [newProduct, setNewProduct] = useState({ nom: '', description: '', prix: '', quantite: '' });
+            const [graphsData, setGraphsData] = useState({ evolution: null, topProduits: null, revenus: null });
 
             useEffect(() => { fetchData(); }, []);
 
             const fetchData = async () => {
                 try {
-                    const [statsRes, productsRes, ordersRes, usersRes] = await Promise.all([
+                    const [statsRes, productsRes, ordersRes, usersRes, evolutionRes, topRes, revenusRes] = await Promise.all([
                         fetch(`${API_URL}/admin/stats`, { headers: { 'Authorization': `Bearer ${token}` } }),
                         fetch(`${API_URL}/products?limite=100`),
                         fetch(`${API_URL}/admin/orders`, { headers: { 'Authorization': `Bearer ${token}` } }),
-                        fetch(`${API_URL}/admin/users`, { headers: { 'Authorization': `Bearer ${token}` } })
+                        fetch(`${API_URL}/admin/users`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                        fetch(`${API_URL}/admin/graphs/evolution-ventes`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                        fetch(`${API_URL}/admin/graphs/top-produits`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                        fetch(`${API_URL}/admin/graphs/revenus-par-produit`, { headers: { 'Authorization': `Bearer ${token}` } })
                     ]);
                     if (statsRes.ok) setStats(await statsRes.json());
                     if (productsRes.ok) { const d = await productsRes.json(); setProducts(d.produits || []); }
                     if (ordersRes.ok) { const d = await ordersRes.json(); setOrders(d.commandes || []); }
                     if (usersRes.ok) { const d = await usersRes.json(); setUsers(d.utilisateurs || []); }
+                    
+                    // Charger les données des graphiques
+                    const evoData = evolutionRes.ok ? await evolutionRes.json() : null;
+                    const topData = topRes.ok ? await topRes.json() : null;
+                    const revData = revenusRes.ok ? await revenusRes.json() : null;
+                    setGraphsData({ evolution: evoData, topProduits: topData, revenus: revData });
                 } catch (err) {
                     setError('Erreur lors du chargement des données admin');
                 } finally {
@@ -639,6 +707,71 @@
                                 <div className="stat-card"><div className="stat-icon">💵</div><div className="stat-value">{stats.commandes?.ca_total?.toFixed(0) || 0}€</div><div className="stat-label">Chiffre d'affaires</div></div>
                                 <div className="stat-card"><div className="stat-icon">👥</div><div className="stat-value">{stats.utilisateurs?.total || 0}</div><div className="stat-label">Utilisateurs</div></div>
                             </div>
+
+                            {graphsData.evolution && graphsData.evolution.dates && (
+                                <ChartComponent 
+                                    title="📈 Évolution des ventes" 
+                                    type="line"
+                                    data={{
+                                        labels: graphsData.evolution.dates,
+                                        datasets: [{
+                                            label: 'Chiffre d\'affaires (€)',
+                                            data: graphsData.evolution.totaux,
+                                            borderColor: 'var(--accent)',
+                                            backgroundColor: 'rgba(255, 20, 147, 0.1)',
+                                            borderWidth: 2,
+                                            tension: 0.1,
+                                            fill: true
+                                        }]
+                                    }}
+                                />
+                            )}
+
+                            {graphsData.topProduits && graphsData.topProduits.noms && (
+                                <ChartComponent 
+                                    title="🏆 Top 5 Produits" 
+                                    type="bar"
+                                    data={{
+                                        labels: graphsData.topProduits.noms,
+                                        datasets: [{
+                                            label: 'Quantité vendue',
+                                            data: graphsData.topProduits.quantites,
+                                            backgroundColor: [
+                                                'rgba(255, 20, 147, 0.7)',
+                                                'rgba(255, 20, 147, 0.6)',
+                                                'rgba(255, 20, 147, 0.5)',
+                                                'rgba(255, 20, 147, 0.4)',
+                                                'rgba(255, 20, 147, 0.3)'
+                                            ],
+                                            borderColor: 'var(--accent)',
+                                            borderWidth: 1
+                                        }]
+                                    }}
+                                />
+                            )}
+
+                            {graphsData.revenus && graphsData.revenus.noms && (
+                                <ChartComponent 
+                                    title="💰 Répartition du chiffre d'affaires" 
+                                    type="doughnut"
+                                    data={{
+                                        labels: graphsData.revenus.noms,
+                                        datasets: [{
+                                            data: graphsData.revenus.revenus,
+                                            backgroundColor: [
+                                                'rgba(255, 20, 147, 0.8)',
+                                                'rgba(0, 191, 255, 0.8)',
+                                                'rgba(50, 205, 50, 0.8)',
+                                                'rgba(255, 165, 0, 0.8)',
+                                                'rgba(138, 43, 226, 0.8)'
+                                            ],
+                                            borderColor: 'var(--bg-card)',
+                                            borderWidth: 2
+                                        }]
+                                    }}
+                                />
+                            )}
+
                             <div style={{marginTop: '2rem', background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem'}}>
                                 <h3 style={{marginBottom: '1rem', color: 'var(--text-primary)'}}>📥 Télécharger les données</h3>
                                 <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem'}}>
